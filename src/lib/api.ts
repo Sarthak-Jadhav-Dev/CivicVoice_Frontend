@@ -19,19 +19,24 @@ export interface User {
 
 export interface Issue {
   _id: string;
-  title: string;
-  description: string;
-  type: string;
-  status: 'Pending' | 'In Progress' | 'Resolved' | 'Verified';
-  location: {
-    address: string;
-    coordinates: [number, number];
-  };
-  images: string[];
-  reportedBy: {
-    id: string;
+  userId: {
+    _id: string;
     username: string;
     email: string;
+    role: string;
+  };
+  description: string;
+  issueType: 'Road' | 'Sanitation' | 'Electricity' | 'Water' | 'Other';
+  status: 'Pending' | 'Verified' | 'In Progress' | 'Resolved';
+  location?: {
+    address?: string;
+    coordinates?: [number, number];
+  };
+  imageUrl: string;
+  geminiValidation: {
+    isValid: boolean;
+    confidence: number;
+    analysis: string;
   };
   createdAt: string;
   updatedAt: string;
@@ -117,6 +122,7 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     try {
       const url = getApiUrl(endpoint);
+      
       const config: RequestInit = {
         ...options,
         headers: {

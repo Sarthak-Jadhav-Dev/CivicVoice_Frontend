@@ -1,5 +1,27 @@
-import { useState, useEffect } from 'react';
-import { apiClient, User, LoginRequest, RegisterRequest } from '@/lib/api';
+"use client";
+import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { apiClient } from '@/lib/api';
+
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  role: 'user' | 'admin' | 'superadmin';
+  isActive: boolean;
+  createdAt: string;
+}
+
+interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
 
 interface UseAuthReturn {
   user: User | null;
@@ -9,13 +31,25 @@ interface UseAuthReturn {
   register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
+  isAdmin: () => boolean;
 }
 
+const AuthContext = createContext<UseAuthReturn | undefined>(undefined);
+
 export const useAuth = (): UseAuthReturn => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const isAuthenticated = !!user;
+  const isAdmin = () => user?.role === 'admin' || user?.role === 'superadmin';
 
   // Load user profile on mount
   useEffect(() => {
@@ -102,7 +136,7 @@ export const useAuth = (): UseAuthReturn => {
     }
   };
 
-  return {
+  const value = {
     user,
     isLoading,
     isAuthenticated,
@@ -110,5 +144,14 @@ export const useAuth = (): UseAuthReturn => {
     register,
     logout,
     refreshProfile,
+    isAdmin,
   };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
+
+export default AuthProvider;

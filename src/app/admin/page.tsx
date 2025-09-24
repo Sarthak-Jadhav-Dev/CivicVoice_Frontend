@@ -2,60 +2,46 @@
 import React from "react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/components/ui/toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { AuroraBackground } from "@/components/ui/aurora-background";
-import {
-  Navbar,
-  NavBody,
-  NavItems,
-  MobileNav,
-  NavbarLogo,
-  NavbarButton,
-  MobileNavHeader,
-  MobileNavToggle,
-  MobileNavMenu,
-} from "@/components/ui/resizable-navbar";
+import { CivicNavbar } from "@/components/ui/civic-navbar";
+import { Footer } from "@/components/ui/footer";
 
 import {
   IconBrandGoogle,
 } from "@tabler/icons-react";
-// import Navbar from "@/components/header";
 
-const navItems = [
-  {
-    name: "Features",
-    link: "#features",
-  },
-  {
-    name: "Pricing",
-    link: "#pricing",
-  },
-  {
-    name: "Contact",
-    link: "#contact",
-  },
-];
-
-export default function SignupFormDemo() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { login, isLoading } = useAuth();
+export default function AdminLoginPage() {
+  const { login, isLoading, isAuthenticated, user } = useAuth();
+  const { showToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
+
+  // Redirect if already authenticated
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      showToast(`Welcome back, ${user.username}!`, 'success');
+      window.location.href = "/admin/dashboard";
+    }
+  }, [isAuthenticated, user, showToast]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setMessage(null);
     const res = await login({ email, password });
     if (res.success) {
-      setMessage("Logged in successfully. Backend connection OK.");
+      showToast("Login successful! Redirecting to dashboard...", 'success');
+      setTimeout(() => {
+        window.location.href = "/admin/dashboard";
+      }, 1000);
     } else {
-      setMessage(res.error || "Login failed");
+      showToast(res.error || "Login failed", 'error');
     }
   };
+
   return (
     <AuroraBackground>
       <motion.div
@@ -66,80 +52,18 @@ export default function SignupFormDemo() {
           duration: 0.8,
           ease: "easeInOut",
         }}
-        className="relative flex flex-col gap-4 items-center justify-center px-4"
+        className="relative flex flex-col gap-4 items-center justify-center px-4 pt-24"
       >
-        <div className="relative w-full">
-          <Navbar>
-            <NavBody>
-              <NavbarLogo />
-              <NavItems items={navItems} />
-              <div className="flex items-center gap-4">
-                <NavbarButton variant="secondary">Login</NavbarButton>
-                <NavbarButton variant="primary">Learn More</NavbarButton>
-              </div>
-            </NavBody>
-            <MobileNav>
-              <MobileNavHeader>
-                <NavbarLogo />
-                <MobileNavToggle
-                  isOpen={isMobileMenuOpen}
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                />
-              </MobileNavHeader>
-
-              <MobileNavMenu
-                isOpen={isMobileMenuOpen}
-                onClose={() => setIsMobileMenuOpen(false)}
-              >
-                {navItems.map((item, idx) => (
-                  <a
-                    key={`mobile-link-${idx}`}
-                    href={item.link}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="relative text-neutral-600 dark:text-neutral-300"
-                  >
-                    <span className="block">{item.name}</span>
-                  </a>
-                ))}
-                <div className="flex w-full flex-col gap-4">
-                  <NavbarButton
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    variant="primary"
-                    className="w-full"
-                  >
-                    Login
-                  </NavbarButton>
-                  <NavbarButton
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    variant="primary"
-                    className="w-full"
-                  >
-                    Learn More
-                  </NavbarButton>
-                </div>
-              </MobileNavMenu>
-            </MobileNav>
-          </Navbar>
-        </div>
-        <div className="shadow-input mx-auto w-full max-w-md rounded-none bg-white p-4 md:rounded-2xl md:p-8 dark:bg-black mt-19">
+        <CivicNavbar variant="admin" />
+        <div className="shadow-input mx-auto w-full max-w-md rounded-none bg-white p-4 md:rounded-2xl md:p-8 dark:bg-black mt-8">
           <h2 className="text-xl font-bold text-neutral-800 dark:text-neutral-200">
-            Welcome to Civic Voice
+            Civic Voice Admin Portal
           </h2>
           <p className="mt-2 max-w-sm text-sm text-neutral-600 dark:text-neutral-300">
-            Login to CivicVoice to access the admin panel
+            Secure access for administrators to manage civic issues and user accounts
           </p>
 
           <form className="my-8" onSubmit={handleSubmit}>
-            <div className="mb-4 flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
-              <LabelInputContainer>
-                <Label htmlFor="firstname">First name</Label>
-                <Input id="firstname" placeholder="First Name" type="text" />
-              </LabelInputContainer>
-              <LabelInputContainer>
-                <Label htmlFor="lastname">Last name</Label>
-                <Input id="lastname" placeholder="Last Name" type="text" />
-              </LabelInputContainer>
-            </div>
             <LabelInputContainer className="mb-4">
               <Label htmlFor="email">Email Address</Label>
               <Input
@@ -172,20 +96,17 @@ export default function SignupFormDemo() {
               <BottomGradient />
             </button>
 
-            {message && (
-              <p className="mt-3 text-sm text-neutral-700 dark:text-neutral-300">{message}</p>
-            )}
-
             <div className="my-8 h-[1px] w-full bg-gradient-to-r from-transparent via-neutral-300 to-transparent dark:via-neutral-700" />
 
             <div className="flex flex-col space-y-4">
               <button
                 className="group/btn shadow-input relative flex h-10 w-full items-center justify-start space-x-2 rounded-md bg-gray-50 px-4 font-medium text-black dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_#262626]"
-                type="submit"
+                type="button"
+                disabled
               >
                 <IconBrandGoogle className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />
                 <span className="text-sm text-neutral-700 dark:text-neutral-300">
-                  Google
+                  Admin SSO (Coming Soon)
                 </span>
                 <BottomGradient />
               </button>
@@ -193,6 +114,7 @@ export default function SignupFormDemo() {
           </form>
         </div>
       </motion.div>
+      <Footer />
     </AuroraBackground>
   );
 }

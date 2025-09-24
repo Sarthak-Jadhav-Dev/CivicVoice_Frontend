@@ -272,25 +272,38 @@ export const BlurImage = ({
   src,
   className,
   alt,
+  fill,
+  blurDataURL,
   ...rest
 }: ImageProps) => {
   const [isLoading, setLoading] = useState(true);
+  
+  // Filter out Next.js specific props that don't belong on regular img tag
+  const { 
+    priority, 
+    placeholder, 
+    quality, 
+    sizes, 
+    loader, 
+    unoptimized,
+    ...imgProps 
+  } = rest;
+  
   return (
     <img
       className={cn(
         "h-full w-full transition duration-300",
         isLoading ? "blur-sm" : "blur-0",
+        fill ? "absolute inset-0 object-cover" : "",
         className,
       )}
       onLoad={() => setLoading(false)}
       src={src as string}
-      width={width}
-      height={height}
+      width={fill ? undefined : width}
+      height={fill ? undefined : height}
       loading="lazy"
-      decoding="async"
-      blurDataURL={typeof src === "string" ? src : undefined}
-      alt={alt ? alt : "Background of a beautiful view"}
-      {...rest}
+      alt={alt}
+      {...imgProps}
     />
   );
 };

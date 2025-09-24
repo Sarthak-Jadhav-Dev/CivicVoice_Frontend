@@ -7,6 +7,7 @@ import {
   useScroll,
   useMotionValueEvent,
 } from "motion/react";
+import Link from "next/link";
 import React, { useRef, useState } from "react";
 
 // ================== Types ==================
@@ -60,13 +61,13 @@ export const Navbar = ({ children, className }: NavbarProps) => {
   const [visible, setVisible] = useState<boolean>(false);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
-    setVisible(latest > 100);
+    setVisible(latest > 50);
   });
 
   return (
     <motion.div
       ref={ref}
-      className={cn("sticky inset-x-0 top-20 z-40 w-full", className)}
+      className={cn("fixed inset-x-0 top-0 z-50 w-full", className)}
     >
       {React.Children.map(children, (child) =>
         React.isValidElement(child)
@@ -84,18 +85,19 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
   return (
     <motion.div
       animate={{
-        backdropFilter: visible ? "blur(10px)" : "none",
+        backdropFilter: "blur(10px)",
         boxShadow: visible
           ? "0 0 24px rgba(34, 42, 53, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(34, 42, 53, 0.04), 0 0 4px rgba(34, 42, 53, 0.08), 0 16px 68px rgba(47, 48, 55, 0.05), 0 1px 0 rgba(255, 255, 255, 0.1) inset"
-          : "none",
-        width: visible ? "40%" : "100%",
-        y: visible ? 20 : 0,
+          : "0 1px 3px rgba(0, 0, 0, 0.1)",
+        width: visible ? "95%" : "100%",
+        borderRadius: visible ? "12px" : "0px",
+        y: visible ? 8 : 0,
+        paddingLeft: visible ? "16px" : "32px",
+        paddingRight: visible ? "16px" : "32px",
       }}
       transition={{ type: "spring", stiffness: 200, damping: 50 }}
-      style={{ minWidth: "800px" }}
       className={cn(
-        "relative z-[60] mx-auto hidden w-full max-w-7xl flex-row items-center justify-between rounded-full bg-transparent px-4 py-2 lg:flex dark:bg-transparent",
-        visible && "bg-white/80 dark:bg-neutral-950/80",
+        "relative z-[60] mx-auto hidden w-full max-w-7xl flex-row items-center justify-between bg-white/90 px-8 py-3 lg:flex dark:bg-neutral-950/90",
         className
       )}
     >
@@ -140,20 +142,19 @@ export const MobileNav = ({ children, className, visible }: MobileNavProps) => {
   return (
     <motion.div
       animate={{
-        backdropFilter: visible ? "blur(10px)" : "none",
+        backdropFilter: "blur(10px)",
         boxShadow: visible
           ? "0 0 24px rgba(34, 42, 53, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(34, 42, 53, 0.04), 0 0 4px rgba(34, 42, 53, 0.08), 0 16px 68px rgba(47, 48, 55, 0.05), 0 1px 0 rgba(255, 255, 255, 0.1) inset"
-          : "none",
-        width: visible ? "90%" : "100%",
-        paddingRight: visible ? "12px" : "0px",
-        paddingLeft: visible ? "12px" : "0px",
-        borderRadius: visible ? "4px" : "2rem",
-        y: visible ? 20 : 0,
+          : "0 1px 3px rgba(0, 0, 0, 0.1)",
+        width: visible ? "95%" : "100%",
+        paddingRight: visible ? "16px" : "16px",
+        paddingLeft: visible ? "16px" : "16px",
+        borderRadius: visible ? "12px" : "0px",
+        y: visible ? 8 : 0,
       }}
       transition={{ type: "spring", stiffness: 200, damping: 50 }}
       className={cn(
-        "relative z-50 mx-auto flex w-full max-w-[calc(100vw-2rem)] flex-col items-center justify-between bg-transparent px-0 py-2 lg:hidden",
-        visible && "bg-white/80 dark:bg-neutral-950/80",
+        "relative z-50 mx-auto flex w-full max-w-[calc(100vw-2rem)] flex-col items-center justify-between bg-white/90 px-4 py-3 lg:hidden dark:bg-neutral-950/90",
         className
       )}
     >
@@ -207,13 +208,13 @@ export const MobileNavToggle = ({
   );
 
 export const NavbarLogo = () => (
-  <a
-    href="#"
+  <Link
+    href="/"
     className="relative z-20 mr-4 flex items-center space-x-2 px-2 py-1 text-sm font-normal text-black"
   >
     <img src="/logo.jpeg" alt="logo" width={40} height={40} />
     <span className="font-medium text-black dark:text-white">CivicVoice</span>
-  </a>
+  </Link>
 );
 
 // ================== NavbarButton ==================

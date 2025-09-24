@@ -7,17 +7,9 @@ import { cn } from "@/lib/utils";
 import { ContainerTextFlip } from "@/components/ui/container-text-flip";
 import { StickyScroll } from "@/components/ui/sticky-scroll-reveal";
 import { Carousel, Card } from "@/components/ui/apple-cards-carousel";
-import {
-  Navbar,
-  NavBody,
-  NavItems,
-  MobileNav,
-  NavbarLogo,
-  NavbarButton,
-  MobileNavHeader,
-  MobileNavToggle,
-  MobileNavMenu,
-} from "@/components/ui/resizable-navbar";
+import { CivicNavbar } from "@/components/ui/civic-navbar";
+import { Footer } from "@/components/ui/footer";
+import Link from "next/link";
 
 const DummyContent = () => {
   return (
@@ -32,7 +24,7 @@ const DummyContent = () => {
               <span className="font-bold text-neutral-700 dark:text-neutral-200">
                 The first rule of our platform is that you use it to make your city better
               </span>{" "}
-               Spot a pothole? Report it. Water leakage? Upload it. Streetlight not working? Weve got you covered. From quick issue reporting to geo-tagged proof of resolution, our system makes sure no problem is left unheard — and every solution is just a click away.
+              Spot a pothole? Report it. Water leakage? Upload it. Streetlight not working? Weve got you covered. From quick issue reporting to geo-tagged proof of resolution, our system makes sure no problem is left unheard — and every solution is just a click away.
             </p>
             <img
               src="/civicVocie.jpeg"
@@ -48,20 +40,20 @@ const DummyContent = () => {
   );
 };
 
-  const navItems = [
-    {
-      name: "Features",
-      link: "#features",
-    },
-    {
-      name: "Pricing",
-      link: "#pricing",
-    },
-    {
-      name: "Contact",
-      link: "#contact",
-    },
-  ];
+const navItems = [
+  {
+    name: "Features",
+    link: "#features",
+  },
+  {
+    name: "Pricing",
+    link: "#pricing",
+  },
+  {
+    name: "Contact",
+    link: "#contact",
+  },
+];
 
 
 const data = [
@@ -186,62 +178,7 @@ export default function Page() {
   ];
   return (
     <>
-      <div className="absolute top-2.5 w-full">
-      <Navbar>
-        {/* Desktop Navigation */}
-        <NavBody>
-          <NavbarLogo />
-          <NavItems items={navItems} />
-          <div className="flex items-center gap-4">
-            <NavbarButton variant="secondary">Login</NavbarButton>
-            <NavbarButton variant="primary">Learn More</NavbarButton>
-          </div>
-        </NavBody>
- 
-        {/* Mobile Navigation */}
-        <MobileNav>
-          <MobileNavHeader>
-            <NavbarLogo />
-            <MobileNavToggle
-              isOpen={isMobileMenuOpen}
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            />
-          </MobileNavHeader>
- 
-          <MobileNavMenu
-            isOpen={isMobileMenuOpen}
-            onClose={() => setIsMobileMenuOpen(false)}
-          >
-            {navItems.map((item, idx) => (
-              <a
-                key={`mobile-link-${idx}`}
-                href={item.link}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="relative text-neutral-600 dark:text-neutral-300"
-              >
-                <span className="block">{item.name}</span>
-              </a>
-            ))}
-            <div className="flex w-full flex-col gap-4">
-              <NavbarButton
-                onClick={() => setIsMobileMenuOpen(false)}
-                variant="primary"
-                className="w-full"
-              >
-                Login
-              </NavbarButton>
-              <NavbarButton
-                onClick={() => setIsMobileMenuOpen(false)}
-                variant="primary"
-                className="w-full"
-              >
-                Learn More
-              </NavbarButton>
-            </div>
-          </MobileNavMenu>
-        </MobileNav>
-      </Navbar>
-    </div>
+      <CivicNavbar variant="home" />
       <div className="relative mx-auto my-10 flex max-w-7xl flex-col items-center justify-center">
         <div className="absolute inset-y-0 left-0 h-full w-px bg-neutral-200/80 dark:bg-neutral-800/80">
           <div className="absolute top-0 h-40 w-px bg-gradient-to-b from-transparent via-blue-500 to-transparent" />
@@ -302,12 +239,12 @@ export default function Page() {
             }}
             className="relative z-10 mt-8 flex flex-wrap items-center justify-center gap-4"
           >
-            <button className="w-60 transform rounded-lg bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
+            <Link href={'/join-us'}><button className="w-60 transform rounded-lg bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
               Explore Now
-            </button>
-            <button className="w-60 transform rounded-lg border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900">
+            </button></Link>
+            <Link href={'/admin'}><button className="w-60 transform rounded-lg border border-gray-300 bg-white px-6 py-2 font-medium text-black transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900">
               Admin Panel
-            </button>
+            </button></Link>
           </motion.div>
           <motion.div
             initial={{
@@ -335,7 +272,12 @@ export default function Page() {
             </div>
           </motion.div>
         </div>
-        <AnimatedTestimonials testimonials={testimonials} />
+        <div className="w-full h-full py-20">
+          <h2 className="max-w-7xl pl-4 mx-auto text-xl md:text-5xl font-bold text-neutral-800 dark:text-neutral-200 font-sans">
+            Why Civic Voice ?
+          </h2>
+          <AnimatedTestimonials testimonials={testimonials} />
+        </div>
         <div className="w-full h-full py-20">
           <h2 className="max-w-7xl pl-4 mx-auto text-xl md:text-5xl font-bold text-neutral-800 dark:text-neutral-200 font-sans">
             Know More About Civic Voice
@@ -365,6 +307,7 @@ export default function Page() {
           </div>
         </div>
       </div>
+      <Footer />
     </>
   );
 }
