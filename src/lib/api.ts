@@ -9,7 +9,8 @@ export interface ApiResponse<T = any> {
 }
 
 export interface User {
-  id: string;
+  _id: string;
+  id?: string; // For backward compatibility
   username: string;
   email: string;
   role: 'user' | 'admin' | 'superadmin';

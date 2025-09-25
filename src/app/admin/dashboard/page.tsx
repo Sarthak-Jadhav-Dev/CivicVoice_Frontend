@@ -20,8 +20,22 @@ import {
   Plus,
   Edit,
   Trash2,
-  Eye
+  Eye,
+  UserPlus,
+  Shield,
+  X,
+  MoreHorizontal,
+  Calendar,
+  MapPin,
+  User as UserIcon
 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 
 interface TabProps {
   activeTab: string;
@@ -38,6 +52,13 @@ const AdminDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
+  const [createAdminData, setCreateAdminData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    role: 'admin' as 'admin' | 'superadmin'
+  });
 
   // Redirect if not authenticated or not admin
   useEffect(() => {
@@ -118,13 +139,75 @@ const AdminDashboard = () => {
       const response = await apiClient.updateUserStatus(userId, isActive);
       if (response.success) {
         setUsers(prev => prev.map(user => 
-          user.id === userId ? { ...user, isActive } : user
+          (user._id || user.id) === userId ? { ...user, isActive } : user
         ));
       } else {
         alert(response.error || "Failed to update user status");
       }
     } catch (err) {
       alert("Failed to update user status");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("Are you sure you want to permanently delete this user? This action cannot be undone.")) return;
+    
+    try {
+      const response = await apiClient.deleteUser(userId);
+      if (response.success) {
+        setUsers(prev => prev.filter(user => (user._id || user.id) !== userId));
+        alert("User deleted successfully");
+      } else {
+        alert(response.error || "Failed to delete user");
+      }
+    } catch (err) {
+      alert("Failed to delete user");
+    }
+  };
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!createAdminData.username || !createAdminData.email || !createAdminData.password) {
+      alert("Please fill in all fields");
+      return;
+    }
+
+    try {
+      const response = await apiClient.createAdmin(createAdminData);
+      if (response.success) {
+        // Reload users to show the new admin
+        const usersResponse = await apiClient.getUsers();
+        if (usersResponse.success && usersResponse.data) {
+          setUsers(usersResponse.data);
+        }
+        
+        setShowCreateAdminModal(false);
+        setCreateAdminData({ username: '', email: '', password: '', role: 'admin' });
+        alert(`${createAdminData.role} created successfully!`);
+      } else {
+        alert(response.error || "Failed to create admin");
+      }
+    } catch (err) {
+      alert("Failed to create admin");
+    }
+  };
+
+  const handleUpdateUserRole = async (userId: string, newRole: User['role']) => {
+    if (!confirm(`Are you sure you want to change this user's role to ${newRole}?`)) return;
+    
+    try {
+      const response = await apiClient.updateUserRole(userId, newRole);
+      if (response.success) {
+        setUsers(prev => prev.map(user => 
+          (user._id || user.id) === userId ? { ...user, role: newRole } : user
+        ));
+        alert("User role updated successfully");
+      } else {
+        alert(response.error || "Failed to update user role");
+      }
+    } catch (err) {
+      alert("Failed to update user role");
     }
   };
 
@@ -206,6 +289,7 @@ const AdminDashboard = () => {
               { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
               { id: 'issues', label: 'Issues', icon: AlertTriangle },
               { id: 'users', label: 'Users', icon: Users },
+              ...(user?.role === 'superadmin' ? [{ id: 'admin-management', label: 'Admin Management', icon: Shield }] : []),
             ].map((tab) => {
               const Icon = tab.icon;
               return (
@@ -228,27 +312,48 @@ const AdminDashboard = () => {
 
         {/* Dashboard Content */}
         {activeTab === 'dashboard' && (
-          <DashboardOverview stats={dashboardStats} />
+          <div className="space-y-6">
+            <DashboardOverview stats={dashboardStats} />
+          </div>
         )}
 
         {/* Issues Management */}
         {activeTab === 'issues' && (
-          <IssuesManagement 
-            issues={issues} 
-            onUpdateStatus={handleUpdateIssueStatus}
-            onDelete={handleDeleteIssue}
-            onView={handleViewIssue}
-            userRole={user?.role || 'admin'}
-          />
+          <div className="space-y-6">
+            <IssuesManagement 
+              issues={issues} 
+              onUpdateStatus={handleUpdateIssueStatus}
+              onDelete={handleDeleteIssue}
+              onView={handleViewIssue}
+              userRole={user?.role || 'admin'}
+            />
+          </div>
         )}
 
         {/* Users Management */}
         {activeTab === 'users' && (
-          <UsersManagement 
-            users={users}
-            onUpdateStatus={handleUpdateUserStatus}
-            userRole={user?.role || 'admin'}
-          />
+          <div className="space-y-6">
+            <UsersManagement 
+              users={users}
+              onUpdateStatus={handleUpdateUserStatus}
+              onDeleteUser={handleDeleteUser}
+              onUpdateRole={handleUpdateUserRole}
+              userRole={user?.role || 'admin'}
+            />
+          </div>
+        )}
+
+        {/* Admin Management (SuperAdmin Only) */}
+        {activeTab === 'admin-management' && user?.role === 'superadmin' && (
+          <div className="space-y-6">
+            <AdminManagement 
+              users={users.filter(u => u.role === 'admin' || u.role === 'superadmin')}
+              onCreateAdmin={() => setShowCreateAdminModal(true)}
+              onUpdateStatus={handleUpdateUserStatus}
+              onDeleteUser={handleDeleteUser}
+              onUpdateRole={handleUpdateUserRole}
+            />
+          </div>
         )}
       </div>
 
@@ -259,6 +364,15 @@ const AdminDashboard = () => {
         onClose={handleCloseModal}
         onUpdateStatus={handleUpdateIssueStatus}
         userRole={user?.role || 'admin'}
+      />
+
+      {/* Create Admin Modal */}
+      <CreateAdminModal
+        isOpen={showCreateAdminModal}
+        onClose={() => setShowCreateAdminModal(false)}
+        onSubmit={handleCreateAdmin}
+        formData={createAdminData}
+        setFormData={setCreateAdminData}
       />
       </div>
       <Footer />
@@ -365,117 +479,152 @@ const IssuesManagement = ({
     return matchesSearch && matchesStatus;
   });
 
-  return (
-    <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <input
-            type="text"
-            placeholder="Search issues..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          />
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-        >
-          <option value="all">All Status</option>
-          <option value="Pending">Pending</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Resolved">Resolved</option>
-          <option value="Verified">Verified</option>
-        </select>
-      </div>
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Resolved': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'In Progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'Verified': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      default: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+    }
+  };
 
-      {/* Issues List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Issue
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Reported By
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredIssues.map((issue) => (
-                <tr key={issue._id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
-                      {issue.description.substring(0, 50)}...
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'Road': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'Water': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'Electricity': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'Sanitation': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+    }
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            Issues Management
+          </CardTitle>
+          <CardDescription>
+            View and manage all reported issues
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search issues..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="In Progress">In Progress</SelectItem>
+                <SelectItem value="Resolved">Resolved</SelectItem>
+                <SelectItem value="Verified">Verified</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Issues Grid */}
+          <div className="grid gap-4">
+            {filteredIssues.map((issue) => (
+              <Card key={issue._id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                    {/* Issue Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {issue.description}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(issue.issueType)}`}>
+                              {issue.issueType}
+                            </span>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(issue.status)}`}>
+                              {issue.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center gap-1">
+                          <UserIcon className="h-3 w-3" />
+                          <span>{issue.userId?.username || 'Unknown'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full">
-                      {issue.issueType}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <select
-                      value={issue.status}
-                      onChange={(e) => onUpdateStatus(issue._id, e.target.value as Issue['status'])}
-                      className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Resolved">Resolved</option>
-                      <option value="Verified">Verified</option>
-                    </select>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {issue.userId?.username || 'Unknown'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(issue.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button 
-                        onClick={() => onView(issue)}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                        title="View Details"
+
+                    {/* Status Update */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      <Select 
+                        value={issue.status} 
+                        onValueChange={(value) => onUpdateStatus(issue._id, value as Issue['status'])}
                       >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      {userRole === 'superadmin' && (
-                        <button 
-                          onClick={() => onDelete(issue._id)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                          title="Delete Issue"
+                        <SelectTrigger className="w-full sm:w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pending">Pending</SelectItem>
+                          <SelectItem value="In Progress">In Progress</SelectItem>
+                          <SelectItem value="Resolved">Resolved</SelectItem>
+                          <SelectItem value="Verified">Verified</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => onView(issue)}
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {userRole === 'superadmin' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => onDelete(issue._id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {filteredIssues.length === 0 && (
+            <div className="text-center py-12">
+              <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">No issues found</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 };
 
@@ -483,10 +632,14 @@ const IssuesManagement = ({
 const UsersManagement = ({ 
   users, 
   onUpdateStatus, 
+  onDeleteUser,
+  onUpdateRole,
   userRole 
 }: { 
   users: User[]; 
   onUpdateStatus: (id: string, isActive: boolean) => void;
+  onDeleteUser: (id: string) => void;
+  onUpdateRole: (id: string, role: User['role']) => void;
   userRole: string;
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -496,96 +649,133 @@ const UsersManagement = ({
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
-    <div className="space-y-6">
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-        <input
-          type="text"
-          placeholder="Search users..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-        />
-      </div>
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'superadmin': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'admin': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+    }
+  };
 
-      {/* Users List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Joined
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredUsers.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Users Management
+        </CardTitle>
+        <CardDescription>
+          Manage user accounts and permissions
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {/* Search */}
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Users Grid */}
+        <div className="grid gap-4">
+          {filteredUsers.map((user) => (
+            <Card key={user._id || user.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                  {/* User Info */}
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                      {user.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-900 dark:text-white truncate">
                         {user.username}
-                      </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                         {user.email}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(user.role)}`}>
+                          {user.role}
+                        </span>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          user.isActive 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                        }`}>
+                          {user.isActive ? 'Active' : 'Inactive'}
+                        </span>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      user.role === 'superadmin' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                      user.role === 'admin' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                      'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      user.isActive 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                    }`}>
-                      {user.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(user.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => onUpdateStatus(user.id, !user.isActive)}
-                      className={`px-3 py-1 rounded text-xs font-medium ${
-                        user.isActive
-                          ? 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900 dark:text-red-200'
-                          : 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-200'
-                      }`}
-                    >
-                      {user.isActive ? 'Deactivate' : 'Activate'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+
+                  {/* User Meta */}
+                  <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      <span>Joined {new Date(user.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    {/* Role Selector for SuperAdmin */}
+                    {userRole === 'superadmin' && (
+                      <Select 
+                        value={user.role} 
+                        onValueChange={(value) => onUpdateRole((user._id || user.id)!, value as User['role'])}
+                      >
+                        <SelectTrigger className="w-full sm:w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="user">User</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="superadmin">SuperAdmin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <Button
+                        variant={user.isActive ? "outline" : "default"}
+                        size="sm"
+                        onClick={() => onUpdateStatus((user._id || user.id)!, !user.isActive)}
+                        className={user.isActive ? "text-red-600 hover:text-red-700 hover:bg-red-50" : ""}
+                      >
+                        {user.isActive ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      {userRole === 'superadmin' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onDeleteUser((user._id || user.id)!)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </div>
-    </div>
+
+        {filteredUsers.length === 0 && (
+          <div className="text-center py-12">
+            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500 dark:text-gray-400">No users found</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -653,6 +843,266 @@ const ChartCard = ({
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+};
+
+// Admin Management Component (SuperAdmin Only)
+const AdminManagement = ({ 
+  users, 
+  onCreateAdmin,
+  onUpdateStatus, 
+  onDeleteUser,
+  onUpdateRole
+}: { 
+  users: User[]; 
+  onCreateAdmin: () => void;
+  onUpdateStatus: (id: string, isActive: boolean) => void;
+  onDeleteUser: (id: string) => void;
+  onUpdateRole: (id: string, role: User['role']) => void;
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredUsers = users.filter(user => 
+    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Create Admin Button */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          Admin Management
+        </h2>
+        <button
+          onClick={onCreateAdmin}
+          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <UserPlus className="h-4 w-4" />
+          <span>Create Admin</span>
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+        <input
+          type="text"
+          placeholder="Search admins..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        />
+      </div>
+
+      {/* Admins List */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Admin
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Role
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {filteredUsers.map((user) => (
+                <tr key={user._id || user.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {user.username}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {user.email}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <select
+                      value={user.role}
+                      onChange={(e) => onUpdateRole((user._id || user.id)!, e.target.value as User['role'])}
+                      className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="admin">Admin</option>
+                      <option value="superadmin">SuperAdmin</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      user.isActive 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                    }`}>
+                      {user.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {new Date(user.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => onUpdateStatus((user._id || user.id)!, !user.isActive)}
+                        className={`px-3 py-1 rounded text-xs font-medium ${
+                          user.isActive
+                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-200'
+                            : 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-200'
+                        }`}
+                      >
+                        {user.isActive ? 'Deactivate' : 'Activate'}
+                      </button>
+                      <button
+                        onClick={() => onDeleteUser((user._id || user.id)!)}
+                        className="px-3 py-1 rounded text-xs font-medium bg-red-600 text-white hover:bg-red-700"
+                        title="Delete Admin"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {filteredUsers.length === 0 && (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            No admins found.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Create Admin Modal Component
+const CreateAdminModal = ({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  formData, 
+  setFormData 
+}: { 
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+  formData: {
+    username: string;
+    email: string;
+    password: string;
+    role: 'admin' | 'superadmin';
+  };
+  setFormData: React.Dispatch<React.SetStateAction<{
+    username: string;
+    email: string;
+    password: string;
+    role: 'admin' | 'superadmin';
+  }>>;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Create New Admin
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Username
+            </label>
+            <input
+              type="text"
+              value={formData.username}
+              onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              required
+              minLength={6}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Role
+            </label>
+            <select
+              value={formData.role}
+              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'admin' | 'superadmin' }))}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="admin">Admin</option>
+              <option value="superadmin">SuperAdmin</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Create Admin
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
