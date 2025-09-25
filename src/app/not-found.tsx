@@ -53,8 +53,8 @@ export default function NotFound() {
               Page Not Found
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 max-w-md mx-auto">
-              Oops! The page you're looking for seems to have wandered off. 
-              Let's get you back to making your community better.
+              Oops! The page you&apos;re looking for seems to have wandered off. 
+              Let&apos;s get you back to making your community better.
             </p>
           </motion.div>
 
@@ -162,3 +162,4 @@ export default function NotFound() {
     </AuroraBackground>
   );
 }
+

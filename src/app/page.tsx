@@ -1,10 +1,7 @@
 "use client";
-import { useState } from "react";
 import { motion } from "motion/react";
-import NavbarHeader from "@/components/header";
 import { AnimatedTestimonials } from "@/components/ui/animated-testimonials";
 import { cn } from "@/lib/utils";
-import { ContainerTextFlip } from "@/components/ui/container-text-flip";
 import { StickyScroll } from "@/components/ui/sticky-scroll-reveal";
 import { Carousel, Card } from "@/components/ui/apple-cards-carousel";
 import { CivicNavbar } from "@/components/ui/civic-navbar";
@@ -26,11 +23,11 @@ const DummyContent = () => {
               </span>{" "}
               Spot a pothole? Report it. Water leakage? Upload it. Streetlight not working? Weve got you covered. From quick issue reporting to geo-tagged proof of resolution, our system makes sure no problem is left unheard — and every solution is just a click away.
             </p>
-            <img
+            <Image
               src="/civicVocie.jpeg"
               alt="UI"
-              height="500"
-              width="500"
+              height={500}
+              width={500}
               className="md:w-1/2 md:h-1/2 h-full w-full mx-auto object-contain rounded-2xl"
             />
           </div>
@@ -39,22 +36,6 @@ const DummyContent = () => {
     </>
   );
 };
-
-const navItems = [
-  {
-    name: "Features",
-    link: "#features",
-  },
-  {
-    name: "Pricing",
-    link: "#pricing",
-  },
-  {
-    name: "Contact",
-    link: "#contact",
-  },
-];
-
 
 const data = [
   {
@@ -97,8 +78,6 @@ const data = [
 
 
 export default function Page() {
-  const words = ["Wise", "Contributer", "Changer", "awesome"];
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const cards = data.map((card, index) => (
     <Card key={card.src} card={card} index={index} />
   ));
@@ -262,12 +241,13 @@ export default function Page() {
             className="relative z-10 mt-20 rounded-3xl border border-neutral-200 bg-neutral-100 p-4 shadow-md dark:border-neutral-800 dark:bg-neutral-900"
           >
             <div className="w-full overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700">
-              <img
+              <Image
                 src="/banner.png"
                 alt="Landing page preview"
                 className="aspect-[16/9] h-auto w-full object-cover"
                 height={1000}
                 width={1000}
+                priority
               />
             </div>
           </motion.div>
@@ -311,17 +291,3 @@ export default function Page() {
     </>
   );
 }
-
-const NavbarLocal = () => {
-  return (
-    <nav className="flex w-full items-center justify-between border-t border-b border-neutral-200 px-4 py-4 dark:border-neutral-800">
-      <div className="flex items-center gap-2">
-        <div className="size-7 rounded-full bg-gradient-to-br from-violet-500 to-pink-500" />
-        <h1 className="text-base font-bold md:text-2xl">Aceternity UI</h1>
-      </div>
-      <button className="w-24 transform rounded-lg bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-32 dark:bg-white dark:text-black dark:hover:bg-gray-200">
-        Login
-      </button>
-    </nav>
-  );
-};

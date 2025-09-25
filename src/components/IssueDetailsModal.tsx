@@ -2,9 +2,6 @@
 import React from "react";
 import { Issue } from "@/lib/api";
 import {
-  X,
-  MapPin,
-  Calendar,
   User,
   Tag,
   CheckCircle,
@@ -12,8 +9,6 @@ import {
   ImageIcon,
   FileText,
   Clock,
-  Shield,
-  Zap,
 } from "lucide-react";
 import {
   Dialog,
@@ -24,7 +19,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -42,8 +36,8 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
   issue,
   isOpen,
   onClose,
-  onUpdateStatus,
-  userRole,
+  onUpdateStatus: _onUpdateStatus,
+  userRole: _userRole,
 }) => {
   if (!isOpen || !issue) return null;
 
