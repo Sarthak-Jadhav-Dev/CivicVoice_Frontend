@@ -6,6 +6,7 @@ import { StickyScroll } from "@/components/ui/sticky-scroll-reveal";
 import { Carousel, Card } from "@/components/ui/apple-cards-carousel";
 import { CivicNavbar } from "@/components/ui/civic-navbar";
 import { Footer } from "@/components/ui/footer";
+import NextImage from "next/image";
 import Link from "next/link";
 
 const DummyContent = () => {
@@ -23,7 +24,7 @@ const DummyContent = () => {
               </span>{" "}
               Spot a pothole? Report it. Water leakage? Upload it. Streetlight not working? Weve got you covered. From quick issue reporting to geo-tagged proof of resolution, our system makes sure no problem is left unheard — and every solution is just a click away.
             </p>
-            <Image
+            <NextImage
               src="/civicVocie.jpeg"
               alt="UI"
               height={500}
@@ -241,7 +242,7 @@ export default function Page() {
             className="relative z-10 mt-20 rounded-3xl border border-neutral-200 bg-neutral-100 p-4 shadow-md dark:border-neutral-800 dark:bg-neutral-900"
           >
             <div className="w-full overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700">
-              <Image
+              <NextImage
                 src="/banner.png"
                 alt="Landing page preview"
                 className="aspect-[16/9] h-auto w-full object-cover"

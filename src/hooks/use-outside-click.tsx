@@ -1,13 +1,16 @@
 import React, { useEffect } from "react";
 
+type Event = MouseEvent | TouchEvent;
+
 export const useOutsideClick = (
-  ref: React.RefObject<HTMLDivElement>,
-  callback: Function
+  ref: React.RefObject<HTMLElement>,
+  callback: (event: Event) => void
 ) => {
   useEffect(() => {
-    const listener = (event: any) => {
+    const listener = (event: Event) => {
       // DO NOTHING if the element being clicked is the target element or their children
-      if (!ref.current || ref.current.contains(event.target)) {
+      const target = event.target as Node | null;
+      if (!ref.current || !target || ref.current.contains(target)) {
         return;
       }
       callback(event);

@@ -1,15 +1,9 @@
 "use client";
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { apiClient } from '@/lib/api';
+import { apiClient, type User as ApiUser } from '@/lib/api';
 
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  role: 'user' | 'admin' | 'superadmin';
-  isActive: boolean;
-  createdAt: string;
-}
+// Use the User type from the API
+type User = ApiUser;
 
 interface LoginRequest {
   email: string;
@@ -60,7 +54,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           apiClient.setToken(token);
           const response = await apiClient.getProfile();
           if (response.success && response.data) {
-            setUser(response.data);
+            // Ensure we have the correct user object structure
+            const userData = {
+              ...response.data,
+              id: response.data._id, // Map _id to id for backward compatibility
+            };
+            setUser(userData);
           } else {
             // Token is invalid, remove it
             localStorage.removeItem('authToken');
@@ -85,7 +84,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await apiClient.login(credentials);
       
       if (response.success && response.data) {
-        setUser(response.data.user);
+        const userData = {
+          ...response.data.user,
+          id: response.data.user._id || response.data.user.id || '',
+        };
+        setUser(userData);
         return { success: true };
       } else {
         return { success: false, error: response.error || 'Login failed' };
@@ -105,7 +108,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       const response = await apiClient.register(userData);
       
-      if (response.success) {
+      if (response.success && response.data) {
+        const userData = {
+          ...response.data,
+          id: response.data._id || response.data.id || '',
+        };
+        setUser(userData);
         return { success: true };
       } else {
         return { success: false, error: response.error || 'Registration failed' };

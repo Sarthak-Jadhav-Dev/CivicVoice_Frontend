@@ -1,7 +1,7 @@
 import { API_CONFIG, getApiUrl } from './config';
 
 // Types for API responses
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;

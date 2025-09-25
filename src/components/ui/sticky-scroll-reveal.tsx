@@ -4,6 +4,13 @@ import { useMotionValueEvent, useScroll } from "motion/react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
+// Define gradients outside the component to prevent recreation on every render
+const linearGradients = [
+  "linear-gradient(to bottom right, #06b6d4, #10b981)", // cyan-500 to emerald-500
+  "linear-gradient(to bottom right, #ec4899, #6366f1)", // pink-500 to indigo-500
+  "linear-gradient(to bottom right, #f97316, #eab308)", // orange-500 to yellow-500
+] as const;
+
 export const StickyScroll = ({
   content,
   contentClassName,
@@ -44,20 +51,20 @@ export const StickyScroll = ({
     "#0f172a", // slate-900
     "#000000", // black
     "#171717", // neutral-900
-  ];
-  const linearGradients = [
-    "linear-gradient(to bottom right, #06b6d4, #10b981)", // cyan-500 to emerald-500
-    "linear-gradient(to bottom right, #ec4899, #6366f1)", // pink-500 to indigo-500
-    "linear-gradient(to bottom right, #f97316, #eab308)", // orange-500 to yellow-500
-  ];
+  ] as const;
 
-  const [backgroundGradient, setBackgroundGradient] = useState(
-    linearGradients[0],
+  const [backgroundGradient, setBackgroundGradient] = useState<typeof linearGradients[number]>(
+    linearGradients[0]
   );
 
+  // Update background gradient when activeCard changes
   useEffect(() => {
-    setBackgroundGradient(linearGradients[activeCard % linearGradients.length]);
-  }, [activeCard]);
+    // Using the functional update form to avoid including linearGradients in the dependency array
+    setBackgroundGradient(prev => {
+      const newGradient = linearGradients[activeCard % linearGradients.length];
+      return newGradient !== prev ? newGradient : prev;
+    });
+  }, [activeCard]); // No need to include linearGradients as it's defined outside the component
 
   return (
     <motion.div
