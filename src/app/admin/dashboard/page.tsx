@@ -60,6 +60,101 @@ const AdminDashboard = () => {
     role: 'admin' as 'admin' | 'superadmin'
   });
 
+  // Analytics Filters (State / City / Area)
+  const [filterState, setFilterState] = useState<string>("all");
+  const [filterCity, setFilterCity] = useState<string>("all");
+  const [filterArea, setFilterArea] = useState<string>("all");
+
+  // Helpers to parse address -> { area, city, state }
+  const parseAddress = (address?: string) => {
+    if (!address) return { area: "", city: "", state: "" };
+    const parts = address.split(",").map(p => p.trim()).filter(Boolean);
+    // Heuristic: last = state, second last = city, third last = area
+    const state = parts[parts.length - 1] || "";
+    const city = parts[parts.length - 2] || "";
+    const area = parts[parts.length - 3] || "";
+    return { area, city, state };
+  };
+
+  // Build unique option lists from current issues
+  const locationLists = React.useMemo(() => {
+    const states = new Set<string>();
+    const cities = new Set<string>();
+    const areas = new Set<string>();
+    issues.forEach(i => {
+      const { area, city, state } = parseAddress(i.location?.address);
+      if (state) states.add(state);
+      if (city) cities.add(city);
+      if (area) areas.add(area);
+    });
+    return {
+      states: Array.from(states).sort(),
+      cities: Array.from(cities).sort(),
+      areas: Array.from(areas).sort(),
+    };
+  }, [issues]);
+
+  // Apply location filters to issues globally
+  const filteredIssuesGlobal = React.useMemo(() => {
+    return issues.filter(i => {
+      const { area, city, state } = parseAddress(i.location?.address);
+      const matchState = filterState === "all" || state === filterState;
+      const matchCity = filterCity === "all" || city === filterCity;
+      const matchArea = filterArea === "all" || area === filterArea;
+      return matchState && matchCity && matchArea;
+    });
+  }, [issues, filterState, filterCity, filterArea]);
+
+  // Recompute dashboard stats from filtered issues (client-side)
+  const computedStatsFromIssues = (iss: Issue[]): DashboardStats | null => {
+    if (!dashboardStats) return null;
+    const overview = {
+      totalIssues: iss.length,
+      pendingIssues: iss.filter(i => i.status === 'Pending').length,
+      resolvedIssues: iss.filter(i => i.status === 'Resolved').length,
+      totalUsers: dashboardStats.overview.totalUsers,
+      adminUsers: dashboardStats.overview.adminUsers,
+    };
+    const byTypeMap = new Map<string, number>();
+    const byStatusMap = new Map<string, number>();
+    iss.forEach(i => {
+      byTypeMap.set(i.issueType, (byTypeMap.get(i.issueType) || 0) + 1);
+      byStatusMap.set(i.status, (byStatusMap.get(i.status) || 0) + 1);
+    });
+    const charts = {
+      issuesByType: Array.from(byTypeMap.entries()).map(([k, v]) => ({ _id: k, count: v })),
+      issuesByStatus: Array.from(byStatusMap.entries()).map(([k, v]) => ({ _id: k, count: v })),
+    };
+    // Recent issues: sort by createdAt desc
+    const recentIssues = [...iss].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+    return { overview, charts, recentIssues };
+  };
+
+  const displayStats = React.useMemo(() => {
+    // If any filter is active, show computed stats; else original
+    const anyFilter = filterState !== 'all' || filterCity !== 'all' || filterArea !== 'all';
+    return anyFilter ? computedStatsFromIssues(filteredIssuesGlobal) : dashboardStats;
+  }, [dashboardStats, filteredIssuesGlobal, filterState, filterCity, filterArea]);
+
+  // Analytics charts computed from filtered issues
+  const analyticsCharts = React.useMemo(() => {
+    const byType = new Map<string, number>();
+    const byStatus = new Map<string, number>();
+    const byUser = new Map<string, number>();
+    filteredIssuesGlobal.forEach(i => {
+      byType.set(i.issueType, (byType.get(i.issueType) || 0) + 1);
+      byStatus.set(i.status, (byStatus.get(i.status) || 0) + 1);
+      const uname = i.userId?.username || 'Unknown';
+      byUser.set(uname, (byUser.get(uname) || 0) + 1);
+    });
+    return {
+      issuesByType: Array.from(byType.entries()).map(([k, v]) => ({ _id: k, count: v })),
+      issuesByStatus: Array.from(byStatus.entries()).map(([k, v]) => ({ _id: k, count: v })),
+      issuesByUser: Array.from(byUser.entries()).map(([k, v]) => ({ _id: k, count: v }))
+        .sort((a, b) => b.count - a.count),
+    };
+  }, [filteredIssuesGlobal]);
+
   // Redirect if not authenticated or not admin
   useEffect(() => {
     if (!authLoading && (!user || (user.role !== 'admin' && user.role !== 'superadmin'))) {
@@ -289,6 +384,7 @@ const AdminDashboard = () => {
               { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
               { id: 'issues', label: 'Issues', icon: AlertTriangle },
               { id: 'users', label: 'Users', icon: Users },
+              { id: 'analytics', label: 'Analytics', icon: BarChart3 },
               ...(user?.role === 'superadmin' ? [{ id: 'admin-management', label: 'Admin Management', icon: Shield }] : []),
             ].map((tab) => {
               const Icon = tab.icon;
@@ -313,7 +409,7 @@ const AdminDashboard = () => {
         {/* Dashboard Content */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            <DashboardOverview stats={dashboardStats} />
+            <DashboardOverview stats={displayStats} />
           </div>
         )}
 
@@ -321,12 +417,235 @@ const AdminDashboard = () => {
         {activeTab === 'issues' && (
           <div className="space-y-6">
             <IssuesManagement 
-              issues={issues} 
+              issues={filteredIssuesGlobal} 
               onUpdateStatus={handleUpdateIssueStatus}
               onDelete={handleDeleteIssue}
               onView={handleViewIssue}
               userRole={user?.role || 'admin'}
             />
+          </div>
+        )}
+
+        {/* Analytics Panel */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6 sm:space-y-8 lg:space-y-10">
+            <Card>
+              <CardHeader className="px-4 sm:px-6">
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <BarChart3 className="h-5 w-5 flex-shrink-0" />
+                  <span className="truncate">Analytics Filters</span>
+                </CardTitle>
+                <CardDescription className="text-sm">
+                  Filter reports by State, City and Area. Filters apply across Dashboard and Issues.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-4 sm:px-6">
+                {/* Mobile-first filter layout */}
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* State */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">State</label>
+                      <Select value={filterState} onValueChange={setFilterState}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select State" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All States</SelectItem>
+                          {locationLists.states.map((s) => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* City */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City</label>
+                      <Select value={filterCity} onValueChange={setFilterCity}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select City" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Cities</SelectItem>
+                          {locationLists.cities.map((c) => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Area */}
+                    <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Area</label>
+                      <Select value={filterArea} onValueChange={setFilterArea}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select Area" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Areas</SelectItem>
+                          {locationLists.areas.map((a) => (
+                            <SelectItem key={a} value={a}>{a}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Active filters and clear button */}
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    {filterState !== 'all' && (
+                      <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        State: {filterState}
+                      </span>
+                    )}
+                    {filterCity !== 'all' && (
+                      <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        City: {filterCity}
+                      </span>
+                    )}
+                    {filterArea !== 'all' && (
+                      <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                        Area: {filterArea}
+                      </span>
+                    )}
+                    {(filterState !== 'all' || filterCity !== 'all' || filterArea !== 'all') && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="h-7 px-3 text-xs"
+                        onClick={() => { setFilterState('all'); setFilterCity('all'); setFilterArea('all'); }}
+                      >
+                        Clear All
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Summary stats - mobile optimized */}
+                <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-4 sm:p-6 border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400">Filtered Issues</p>
+                        <p className="text-xl sm:text-2xl font-bold text-blue-900 dark:text-blue-100 mt-1">{filteredIssuesGlobal.length}</p>
+                      </div>
+                      <div className="p-2 bg-blue-200 dark:bg-blue-800 rounded-lg">
+                        <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-lg p-4 sm:p-6 border border-yellow-200 dark:border-yellow-800">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs sm:text-sm font-medium text-yellow-600 dark:text-yellow-400">Pending</p>
+                        <p className="text-xl sm:text-2xl font-bold text-yellow-900 dark:text-yellow-100 mt-1">{filteredIssuesGlobal.filter(i => i.status === 'Pending').length}</p>
+                      </div>
+                      <div className="p-2 bg-yellow-200 dark:bg-yellow-800 rounded-lg">
+                        <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 dark:text-yellow-400" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg p-4 sm:p-6 border border-green-200 dark:border-green-800 sm:col-span-2 lg:col-span-1">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400">Resolved</p>
+                        <p className="text-xl sm:text-2xl font-bold text-green-900 dark:text-green-100 mt-1">{filteredIssuesGlobal.filter(i => i.status === 'Resolved').length}</p>
+                      </div>
+                      <div className="p-2 bg-green-200 dark:bg-green-800 rounded-lg">
+                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Charts - mobile responsive */}
+                <div className="mt-8 sm:mt-10 space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6">
+                  <div className="lg:col-span-1">
+                    <ChartCard title="Issues by Type (Filtered)" data={analyticsCharts.issuesByType} />
+                  </div>
+                  <div className="lg:col-span-1">
+                    <ChartCard title="Issues by Status (Filtered)" data={analyticsCharts.issuesByStatus} />
+                  </div>
+                </div>
+
+                {/* Reports by Users - mobile optimized */}
+                <div className="mt-8 sm:mt-10">
+                  <Card>
+                    <CardHeader className="px-4 sm:px-6 pb-4">
+                      <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+                        Reports by Users (Filtered)
+                      </CardTitle>
+                      <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
+                        Top contributors in the filtered area
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-4 sm:px-6">
+                      {analyticsCharts.issuesByUser.length === 0 ? (
+                        <div className="text-center py-8">
+                          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-sm text-gray-600 dark:text-gray-400">No reports match current filters.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 sm:space-y-4">
+                          {analyticsCharts.issuesByUser.slice(0, 8).map((item, index) => (
+                            <div key={item._id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="relative">
+                                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-xs sm:text-sm font-semibold flex-shrink-0">
+                                    {item._id.charAt(0).toUpperCase()}
+                                  </div>
+                                  {index < 3 && (
+                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+                                      <span className="text-xs font-bold text-yellow-900">{index + 1}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="truncate text-sm font-medium text-gray-900 dark:text-white">{item._id}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">{item.count} report{item.count !== 1 ? 's' : ''}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <div className="w-16 sm:w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                  <div 
+                                    className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300" 
+                                    style={{ width: `${(item.count / Math.max(1, Math.max(...analyticsCharts.issuesByUser.map(d => d.count)))) * 100}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-sm font-semibold text-gray-900 dark:text-white min-w-[2rem] text-right">{item.count}</span>
+                              </div>
+                            </div>
+                          ))}
+                          {analyticsCharts.issuesByUser.length > 8 && (
+                            <div className="text-center pt-2">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Showing top 8 of {analyticsCharts.issuesByUser.length} users
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Actual Reports Section - mobile optimized */}
+            <div className="space-y-4 sm:space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Filtered Reports</h3>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  {filteredIssuesGlobal.length} report{filteredIssuesGlobal.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+              <IssuesManagement 
+                issues={filteredIssuesGlobal}
+                onUpdateStatus={handleUpdateIssueStatus}
+                onDelete={handleDeleteIssue}
+                onView={handleViewIssue}
+                userRole={user?.role || 'admin'}
+              />
+            </div>
           </div>
         )}
 
