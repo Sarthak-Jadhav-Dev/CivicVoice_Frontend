@@ -8,7 +8,7 @@ import {
   useMotionValueEvent,
 } from "motion/react";
 import Link from "next/link";
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 
 // ================== Types ==================
 
@@ -54,55 +54,63 @@ interface MobileNavMenuProps {
 
 export const Navbar = ({ children, className }: NavbarProps) => {
   const ref = useRef<HTMLDivElement>(null);
-  const { scrollY } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
-  const [visible, setVisible] = useState<boolean>(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
-  useMotionValueEvent(scrollY, "change", (latest) => {
-    setVisible(latest > 50);
-  });
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+
+    // Initial check
+    handleScroll();
+    
+    // Add scroll event listener
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Cleanup
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    <motion.div
+    <div 
       ref={ref}
-      className={cn("fixed inset-x-0 top-0 z-50 w-full", className)}
-    >
-      {React.Children.map(children, (child) =>
-        React.isValidElement(child)
-          ? React.cloneElement(
-              child as React.ReactElement<{ visible?: boolean }>,
-              { visible }
-            )
-          : child
+      className={cn(
+        "fixed inset-x-0 top-0 z-50 w-full transition-all duration-300",
+        "bg-white/90 backdrop-blur-md dark:bg-neutral-950/90",
+        isScrolled ? "shadow-lg py-2" : "shadow-sm py-3",
+        className
       )}
-    </motion.div>
+    >
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {React.Children.map(children, (child) =>
+          React.isValidElement(child)
+            ? React.cloneElement(
+                child as React.ReactElement<{ isScrolled?: boolean }>,
+                { isScrolled }
+              )
+            : child
+        )}
+      </div>
+    </div>
   );
 };
 
-export const NavBody = ({ children, className, visible }: NavBodyProps) => {
+export const NavBody: React.FC<{ 
+  children: React.ReactNode; 
+  className?: string; 
+  isScrolled?: boolean;
+}> = ({ children, className, isScrolled = false }) => {
   return (
-    <motion.div
-      animate={{
-        backdropFilter: "blur(10px)",
-        boxShadow: visible
-          ? "0 0 24px rgba(34, 42, 53, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(34, 42, 53, 0.04), 0 0 4px rgba(34, 42, 53, 0.08), 0 16px 68px rgba(47, 48, 55, 0.05), 0 1px 0 rgba(255, 255, 255, 0.1) inset"
-          : "0 1px 3px rgba(0, 0, 0, 0.1)",
-        width: visible ? "95%" : "100%",
-        borderRadius: visible ? "12px" : "0px",
-        y: visible ? 8 : 0,
-        paddingLeft: visible ? "16px" : "32px",
-        paddingRight: visible ? "16px" : "32px",
-      }}
-      transition={{ type: "spring", stiffness: 200, damping: 50 }}
+    <div 
       className={cn(
-        "relative z-[60] mx-auto hidden w-full max-w-7xl flex-row items-center justify-between bg-white/90 px-8 py-3 lg:flex dark:bg-neutral-950/90",
+        "relative mx-auto flex w-full max-w-7xl flex-row items-center justify-between transition-all duration-300",
+        "px-8",
+        isScrolled ? "py-2" : "py-3",
         className
       )}
     >
       {children}
-    </motion.div>
+    </div>
   );
 };
 

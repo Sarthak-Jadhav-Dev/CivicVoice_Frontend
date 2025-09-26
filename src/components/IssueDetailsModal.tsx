@@ -71,7 +71,7 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] p-0 flex flex-col overflow-hidden">
+      <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] p-0 flex flex-col overflow-hidden bg-white dark:bg-gray-900 z-[100]">
         {/* Header */}
         <DialogHeader className="px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 sticky top-0 z-10">
           <DialogTitle className="flex items-center gap-3 text-2xl">
